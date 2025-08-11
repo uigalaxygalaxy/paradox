@@ -9,16 +9,21 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER);
 // Initialize the Drivetrain:
 
 // Creates a Motor Group with PROS. the number is the port. Negative numbers = reverse
-
-pros::MotorGroup left_motors({1, 2, 3}, pros::MotorGearset::blue);
-pros::MotorGroup right_motors({4, 5, 6}, pros::MotorGearset::blue);
+//front, middle, back
+pros::MotorGroup left_motors({4, -3, -1}, pros::MotorGearset::blue);
+pros::MotorGroup right_motors({-9, 8, 10}, pros::MotorGearset::blue);
 
 //IMU = inertial sensor, number = port
-pros::Imu imu(10);
+pros::Imu imu(2);
 
 //our rotation sensors for odom
-pros::Rotation horizontal(1);
-pros::Rotation vertical(1);
+
+pros::Rotation horizontal(11);
+pros::Rotation vertical(20);
+
+//intake motor
+pros::Motor firstStage(-7);
+pros::Motor secondStage(-19);
 
 // define our odom wheels (sensor, wheel, tracking offset)
 // how far away is the odom wheel from the center of the bot? for ex. if a horizontal sensor is 4 inches below the center, it would be -4.
@@ -59,11 +64,11 @@ lemlib::ControllerSettings angular_controller(2, // proportional gain (kP)
 
 
 // Create the Drivetrain with LemLib.
-lemlib::Drivetrain drivetrain(&left_motor_group, // left motor group
-                              &right_motor_group, // right motor group
+lemlib::Drivetrain drivetrain(&left_motors, // left motor group
+                              &right_motors, // right motor group
                               10, // The track width (From the front of the bot, how far apart are the wheels?)
-                              lemlib::Omniwheel::NEW_4, // what wheel?
-                              360, // Drivetrain RPM
+                              lemlib::Omniwheel::NEW_275, // what wheel?
+                              450, // Drivetrain RPM
                               2 // horizontal drift
 );
 
@@ -93,7 +98,7 @@ lemlib::Chassis chassis(drivetrain, // drivetrain settings
 
 
 void on_center_button() {
-		pros::lcd::set_text(2, "paradox  is gay and proud ");
+
 }
 
 /**
@@ -152,6 +157,21 @@ void competition_initialize() {}
  */
 void autonomous() {}
 
+
+//makeshift intake code
+ void intake() {
+   if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+    firstStage.move(100);
+    secondStage.move(100);
+  }else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
+    firstStage.move(-100);
+    secondStage.move(-100);
+  }else {
+    firstStage.move(0);
+    secondStage.move(0);
+  }
+}
+
 /**
  * Runs the operator control code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
@@ -166,9 +186,10 @@ void autonomous() {}
  * task, not resume it from where it left off.
  */
 void opcontrol() {
-while true(
+while (true) {
+    intake();
 	    int leftY = controller.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-        int rightX = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+      int rightX = controller.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
         // Curvature Drive
         chassis.curvature(leftY, rightX);
@@ -178,5 +199,5 @@ while true(
 
         // delay to save resources
         pros::delay(25); 
-)
+}
 }
