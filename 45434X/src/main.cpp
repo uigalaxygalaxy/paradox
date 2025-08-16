@@ -13,6 +13,13 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER);
 pros::MotorGroup left_motors({4, -3, -1}, pros::MotorGearset::blue);
 pros::MotorGroup right_motors({-9, 8, 10}, pros::MotorGearset::blue);
 
+pros::Motor k(4);
+pros::Motor a(-3);
+pros::Motor b(-1);
+pros::Motor c(-9);
+pros::Motor d(8);
+pros::Motor e(10);
+
 //IMU = inertial sensor, number = port
 pros::Imu imu(2);
 
@@ -23,12 +30,12 @@ pros::Rotation vertical(20);
 
 //intake motor
 pros::Motor firstStage(-7);
-pros::Motor secondStage(-19);
+pros::Motor secondStage(19);
 
 // define our odom wheels (sensor, wheel, tracking offset)
 // how far away is the odom wheel from the center of the bot? for ex. if a horizontal sensor is 4 inches below the center, it would be -4.
-lemlib::TrackingWheel horizontal_odom(&horizontal, lemlib::Omniwheel::NEW_275, 0);
-lemlib::TrackingWheel vertical_odom(&vertical, lemlib::Omniwheel::NEW_275, 0);
+lemlib::TrackingWheel horizontal_odom(&horizontal, lemlib::Omniwheel::NEW_2, 6.2);
+lemlib::TrackingWheel vertical_odom(&vertical, lemlib::Omniwheel::NEW_2, -1);
 
 // init odomsensors to feed the chassis class
 lemlib::OdomSensors sensors(&vertical_odom, // vertical tracking wheel 1
@@ -51,9 +58,9 @@ lemlib::ControllerSettings lateral_controller(10, // proportional gain (kP)
 );
 
 // angular PID controller
-lemlib::ControllerSettings angular_controller(2, // proportional gain (kP)
+lemlib::ControllerSettings angular_controller(2.3, // proportional gain (kP)
                                               0, // integral gain (kI)
-                                              10, // derivative gain (kD)
+                                              15, // derivative gain (kD)
                                               3, // anti windup
                                               1, // small error range, in degrees
                                               100, // small error range timeout, in milliseconds
@@ -66,7 +73,7 @@ lemlib::ControllerSettings angular_controller(2, // proportional gain (kP)
 // Create the Drivetrain with LemLib.
 lemlib::Drivetrain drivetrain(&left_motors, // left motor group
                               &right_motors, // right motor group
-                              10, // The track width (From the front of the bot, how far apart are the wheels?)
+                              9.5, // The track width (From the front of the bot, how far apart are the wheels?)
                               lemlib::Omniwheel::NEW_275, // what wheel?
                               450, // Drivetrain RPM
                               2 // horizontal drift
@@ -109,19 +116,50 @@ void on_center_button() {
  */
 void initialize() {
 	pros::lcd::initialize(); //initialize the screen
-	chassis.calibrate(); //calibrate sensors yippee
+  chassis.calibrate(); //calibrate sensors yippee
 
 
-	pros::lcd::register_btn1_cb(on_center_button);
-
+//	pros::lcd::register_btn1_cb(on_center_button);
 	pros::Task spitInfo([&]() {
         while (true) {
             pros::lcd::print(0, "X: %f", chassis.getPose().x);
             pros::lcd::print(1, "Y: %f", chassis.getPose().y);
             pros::lcd::print(2, "Theta: %f", chassis.getPose().theta);
-            pros::delay(20);
+            pros::delay(10);
+
+
 			//spits info onto the screen so you can perfect PID!
 			//this utilizes an Lambda: you name, define, and use the task all in one
+   
+   //chassis
+   /*
+          pros::lcd::print(0, "left front: %f", k.get_temperature());
+          pros::lcd::print(1, "left middle: %f", a.get_temperature());
+          pros::lcd::print(2, "left back: %f", b.get_temperature());
+          pros::lcd::print(3, "right front: %f", c.get_temperature());
+          pros::lcd::print(4, "right middle: %f", d.get_temperature());
+          pros::lcd::print(5, "right back: %f", e.get_temperature());
+      */
+        //efficiency
+        /*
+          pros::lcd::print(0, "left front velocity: %f", k.get_actual_velocity());
+                    pros::lcd::print(1, "left front efficient: %f", k.get_efficiency());
+                    */
+/*
+          pros::lcd::print(1, "left middle: %f", a.get_efficiency());
+          pros::lcd::print(2, "left back: %f", b.get_efficiency());
+          pros::lcd::print(3, "right front: %f", c.get_efficiency());
+          pros::lcd::print(4, "right middle: %f", d.get_efficiency());
+          pros::lcd::print(5, "right back: %f", e.get_efficiency());
+          */
+          
+    //intake
+    /*
+          pros::lcd::print(0, "first stage: %f", firstStage.get_temperature());
+          pros::lcd::print(1, "second stage: %f", secondStage.get_temperature());
+      */
+       //   pros::lcd::print(2, "left motor efficiencies: %f", k.get_efficiency_all());
+       //   pros::lcd::print(3, "right motor efficiencies: %f", a.get_efficiency_all());
         }
     });
 }
@@ -155,7 +193,21 @@ void competition_initialize() {}
  * will be stopped. Re-enabling the robot will restart the task, not re-start it
  * from where it left off.
  */
-void autonomous() {}
+void autonomous() {
+
+  chassis.setPose(lemlib::Pose(0, 0, 0)); // reset the pose to 0,0,0
+
+  // example autonomous code
+  chassis.turnToHeading(90, 1500);
+  std::cout << "90 deg; Real: " << chassis.getPose().theta << std::endl;
+  pros::delay(1000);
+  chassis.turnToHeading(180, 1500);
+  std::cout << "180 deg; Real: " << chassis.getPose().theta << std::endl;
+  pros::delay(1000);
+  chassis.turnToHeading(360, 1500);
+  std::cout << "360 deg; Real: " << chassis.getPose().theta << std::endl;
+  pros::delay(1000);
+}
 
 
 //makeshift intake code
@@ -164,8 +216,8 @@ void autonomous() {}
     firstStage.move(100);
     secondStage.move(100);
   }else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)) {
-    firstStage.move(-100);
-    secondStage.move(-100);
+    firstStage.move(-80);
+    secondStage.move(-80);
   }else {
     firstStage.move(0);
     secondStage.move(0);
