@@ -10,18 +10,18 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER);
 
 // Creates a Motor Group with PROS. the number is the port. Negative numbers = reverse
 //front, middle, back
-pros::MotorGroup left_motors({4, -3, -1}, pros::MotorGearset::blue);
+pros::MotorGroup left_motors({15, -3, -18}, pros::MotorGearset::blue);
 pros::MotorGroup right_motors({-9, 8, 10}, pros::MotorGearset::blue);
 
-pros::Motor k(4);
-pros::Motor a(-3);
-pros::Motor b(-1);
+pros::Motor k(15);
+pros::Motor a(-16);
+pros::Motor b(-18);
 pros::Motor c(-9);
 pros::Motor d(8);
 pros::Motor e(10);
 
 //IMU = inertial sensor, number = port
-pros::Imu imu(2);
+pros::Imu imu(17);
 
 //our rotation sensors for odom
 
@@ -32,10 +32,23 @@ pros::Rotation vertical(20);
 pros::Motor firstStage(-7);
 pros::Motor secondStage(19);
 
+// Create the Drivetrain with LemLib.
+lemlib::Drivetrain drivetrain(&left_motors, // left motor group
+                              &right_motors, // right motor group
+                              9.5, // The track width (From the front of the bot, how far apart are the wheels?)
+                              lemlib::Omniwheel::NEW_275, // what wheel?
+                              450, // Drivetrain RPM
+                              2 // horizontal drift
+);
+
 // define our odom wheels (sensor, wheel, tracking offset)
 // how far away is the odom wheel from the center of the bot? for ex. if a horizontal sensor is 4 inches below the center, it would be -4.
-lemlib::TrackingWheel horizontal_odom(&horizontal, lemlib::Omniwheel::NEW_2, 6.2);
-lemlib::TrackingWheel vertical_odom(&vertical, lemlib::Omniwheel::NEW_2, -1);
+/*
+TODO:
+FIX TRACKING WHEEL OFFSET
+*/
+lemlib::TrackingWheel horizontal_odom(&horizontal, lemlib::Omniwheel::NEW_2, 5.75);
+lemlib::TrackingWheel vertical_odom(&vertical, lemlib::Omniwheel::NEW_2, -1.5);
 
 // init odomsensors to feed the chassis class
 lemlib::OdomSensors sensors(&vertical_odom, // vertical tracking wheel 1
@@ -46,38 +59,62 @@ lemlib::OdomSensors sensors(&vertical_odom, // vertical tracking wheel 1
 );
 
 // lateral PID controller
-lemlib::ControllerSettings lateral_controller(10, // proportional gain (kP)
+lemlib::ControllerSettings lateral_controller(11.1, // proportional gain (kP)
                                               0, // integral gain (kI)
-                                              3, // derivative gain (kD)
-                                              3, // anti windup
-                                              1, // small error range, in inches
+                                              58.5, // derivative gain (kD)
+                                              0, // anti windup
+                                              1.5, // small error range, in in
                                               100, // small error range timeout, in milliseconds
-                                              3, // large error range, in inches
-                                              500, // large error range timeout, in milliseconds
+                                              2.5, // large error range, in in
+                                              400, // large error range timeout, in milliseconds
+                                              14 // maximum acceleration (slew)
+);
+
+/*
+kI and anti windup so small its not even worth it
+*/
+
+/*
+lemlib::ControllerSettings lateral_controller(18.325, // proportional gain (kP)
+                                              0, // integral gain (kI)
+                                              110, // derivative gain (kD)
+                                              0, // anti windup
+                                              0, // small error range, in inches
+                                              0, // small error range timeout, in milliseconds
+                                              0, // large error range, in inches
+                                              000, // large error range timeout, in milliseconds
                                               20 // maximum acceleration (slew)
 );
+*/
 
 // angular PID controller
-lemlib::ControllerSettings angular_controller(2.3, // proportional gain (kP)
-                                              0, // integral gain (kI)
-                                              15, // derivative gain (kD)
-                                              3, // anti windup
-                                              1, // small error range, in degrees
-                                              100, // small error range timeout, in milliseconds
-                                              3, // large error range, in degrees
-                                              500, // large error range timeout, in milliseconds
+lemlib::ControllerSettings angular_controller(3.57, // proportional gain (kP) 3.51 32
+                                              0.312, // integral gain (kI) 0.2
+                                              32.75, // derivative gain (kD)
+                                              4.5, // anti windup
+                                              1, // small error range, in deg
+                                              150, // small error range timeout, in milliseconds
+                                              2.5, // large error range, in deg
+                                              550, // large error range timeout, in milliseconds
                                               0 // maximum acceleration (slew)
 );
+/*
+How to tune PID: (for future reference; i spent 4 hours to learn this stupid shit)
+1) change kP to as high as possible and stop when it oscilates more than 4 times (or 6, thats what i did)
+2) change kD to be as low as possible yet stop oscillation
+3) find anti wind up; use LemLib Docs
+4) change kI to be as high as possible without it oscilating (kI kicks after the fast motion as it slowly turns to be accurate)
+
+5) or just use PID scheduling like a sane mfer
+*/
+
+/*
+TODO:
+Tune PID like a normal person and use PID Scheduling instead of being a bum and using rediculously high kP and kD numbers this sucks a lot
+*/
 
 
-// Create the Drivetrain with LemLib.
-lemlib::Drivetrain drivetrain(&left_motors, // left motor group
-                              &right_motors, // right motor group
-                              9.5, // The track width (From the front of the bot, how far apart are the wheels?)
-                              lemlib::Omniwheel::NEW_275, // what wheel?
-                              450, // Drivetrain RPM
-                              2 // horizontal drift
-);
+
 
 // DRIVING STUFF:
 
@@ -194,21 +231,44 @@ void competition_initialize() {}
  * from where it left off.
  */
 void autonomous() {
+  controller.clear();
 
   chassis.setPose(lemlib::Pose(0, 0, 0)); // reset the pose to 0,0,0
 
-  // example autonomous code
-  chassis.turnToHeading(90, 1500);
-  std::cout << "90 deg; Real: " << chassis.getPose().theta << std::endl;
-  pros::delay(1000);
-  chassis.turnToHeading(180, 1500);
-  std::cout << "180 deg; Real: " << chassis.getPose().theta << std::endl;
-  pros::delay(1000);
-  chassis.turnToHeading(360, 1500);
-  std::cout << "360 deg; Real: " << chassis.getPose().theta << std::endl;
-  pros::delay(1000);
-}
+chassis.moveToPoint(0, 18, 3000);
 
+
+chassis.turnToHeading(180, 3000);
+
+
+  pros::delay(2000);
+
+
+
+
+  
+  /*
+  chassis.turnToHeading(10, 2000);
+    pros::delay(2000);
+
+  printf("10 deg; Real: %f", chassis.getPose().theta); // Output to VS Code terminal
+  controller.print(0, 1, "10 | %f",  chassis.getPose().theta);
+
+  
+
+  chassis.turnToHeading(55, 2000);
+    pros::delay(2000);
+  printf("55 deg; Real: %f", chassis.getPose().theta); // Output to VS Code terminal
+  controller.print(1, 2, "55 | %f",  chassis.getPose().theta);
+
+  chassis.turnToHeading(145, 2000);
+    pros::delay(2000);
+
+  printf("225 deg; Real: %f", chassis.getPose().theta); // Output to VS Code terminal
+    controller.print(2, 3, "145 | %f",  chassis.getPose().theta);
+*/
+
+}
 
 //makeshift intake code
  void intake() {
